@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  LAWYER
+  CLIENT
+}
+
+enum ProcessStatus {
+  ACTIVE
+  ARCHIVED
+  SUSPENDED
+  CLOSED
+  WON
+  LOST
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  password       String
+  name           String
+  role           Role     @default(CLIENT)
+  phone          String?
+  avatarUrl      String?
+  isFirstLogin Boolean @default(true)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  client            Client?
+  lawyerProcesses   Process[]     @relation("LawyerProcesses")
+  sentMessages      ChatMessage[] @relation("Sender")
+  receivedMessages  ChatMessage[] @relation("Recipient")
+
+  @@map("users")
+}
+
+model Client {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  cpf            String   @unique
+  rg             String?
+  birthDate      DateTime?
+  profession     String?
+  nationality    String?  @default("Brasileiro(a)")
+  maritalStatus String?
+  address        String?
+  city           String?
+  state          String?
+  zipCode        String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  processes Process[]
+
+  @@index([userId])
+  @@map("clients")
+}
+
+model Process {
+  id            String        @id @default(uuid())
+  clientId      String
+  lawyerId      String?
+  processNumber String        @unique
+  title         String
+  description   String?
+  court         String?
+  instance      String?
+  subject       String?
+  status        ProcessStatus @default(ACTIVE)
+  value         Decimal?
+  startDate     DateTime      @default(now())
+  endDate       DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  client     Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lawyer     User?           @relation("LawyerProcesses", fields: [lawyerId], references: [id], onDelete: SetNull)
+  documents  Document[]
+  updates    ProcessUpdate[]
+
+  @@index([clientId])
+  @@index([lawyerId])
+  @@index([status])
+  @@map("processes")
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  processId String
+  name      String
+  fileUrl   String
+  type      String?
+  createdAt DateTime @default(now())
+
+  process Process @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  @@index([processId])
+  @@map("documents")
+}
+
+model ProcessUpdate {
+  id          String   @id @default(uuid())
+  processId   String
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+
+  process Process @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  @@index([processId])
+  @@map("process_updates")
+}
+
+model ChatMessage {
+  id          String   @id @default(uuid())
+  senderId    String
+  sender      User     @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User     @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  content     String
+  createdAt   DateTime @default(now())
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@map("chat_messages")
+}
