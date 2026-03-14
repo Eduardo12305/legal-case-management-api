@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: advon-postgres
+    environment:
+      POSTGRES_DB: advon
+      POSTGRES_USER: advon
+      POSTGRES_PASSWORD: advon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U advon -d advon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: advon-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      JWT_SECRET: super-secret-change-me
+      DATABASE_URL: postgresql://advon:advon@db:5432/advon?schema=public
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

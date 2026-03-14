@@ -8,14 +8,18 @@
     "dev": "node --watch src/server.jsx",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prisma:migrate:deploy": "npx prisma migrate deploy",
+    "prisma:push": "npx prisma db push",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "test": "echo \"Tests not configured yet\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@prisma/client": "^7.5.0",
+    "@prisma/client": "^6.19.2",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",

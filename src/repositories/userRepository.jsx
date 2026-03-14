@@ -1,4 +1,4 @@
-const prisma = require('../database/prisma');
+const prisma = require('../database/prisma.jsx');
 
 class UserRepository {
   async create(data) {

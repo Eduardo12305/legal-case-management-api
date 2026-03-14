@@ -1,11 +1,11 @@
-const processRepository = require('../repositories/processRepository');
-const clientRepository = require('../repositories/clientRepository');
+const processRepository = require('../repositories/processRepository.jsx');
+const clientRepository = require('../repositories/clientRepository.jsx');
 const {
   ensureEnumValue,
   normalizeDecimal,
   normalizeOptionalString,
   normalizeRequiredString,
-} = require('../utils/validation');
+} = require('../utils/validation.jsx');
 
 const ALLOWED_PROCESS_STATUS = ['ACTIVE', 'ARCHIVED', 'SUSPENDED', 'CLOSED', 'WON', 'LOST'];
 

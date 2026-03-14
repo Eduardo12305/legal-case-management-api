@@ -1,13 +1,13 @@
-const userRepository = require('../repositories/userRepository');
-const clientRepository = require('../repositories/clientRepository');
+const userRepository = require('../repositories/userRepository.jsx');
+const clientRepository = require('../repositories/clientRepository.jsx');
 const bcrypt = require('bcryptjs');
 const {
   isPlainObject,
   normalizeDate,
   normalizeOptionalString,
   normalizeRequiredString,
-} = require('../utils/validation');
-const { sanitizeUser, sanitizeUserCollection } = require('../utils/userSerializers');
+} = require('../utils/validation.jsx');
+const { sanitizeUser, sanitizeUserCollection } = require('../utils/userSerializers.jsx');
 
 function buildUserProfileUpdate(data) {
   if (!isPlainObject(data)) {

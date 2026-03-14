@@ -1,8 +1,9 @@
 require('dotenv').config();
-const { PrismaClient } = require('../generated/prisma');
+const { PrismaClient } = require('@prisma/client');
+const env = require('../config/env.jsx');
 
 const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL,
+  datasourceUrl: env.databaseUrl,
 });
 
 module.exports = prisma;

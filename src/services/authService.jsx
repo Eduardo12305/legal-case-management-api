@@ -1,18 +1,18 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const userRepository = require('../repositories/userRepository');
-const clientRepository = require('../repositories/clientRepository');
-const prisma = require('../database/prisma');
+const userRepository = require('../repositories/userRepository.jsx');
+const clientRepository = require('../repositories/clientRepository.jsx');
+const prisma = require('../database/prisma.jsx');
+const env = require('../config/env.jsx');
 const {
   ensureEnumValue,
   isPlainObject,
   normalizeDate,
   normalizeOptionalString,
   normalizeRequiredString,
-} = require('../utils/validation');
-const { sanitizeUser } = require('../utils/userSerializers');
+} = require('../utils/validation.jsx');
+const { sanitizeUser } = require('../utils/userSerializers.jsx');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'advon-secret-key-change-in-production';
 const ALLOWED_ROLES = ['ADMIN', 'LAWYER', 'CLIENT'];
 
 function normalizeClientData(clientData) {
@@ -150,13 +150,13 @@ class AuthService {
   generateToken(user) {
     return jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
+      env.jwtSecret,
       { expiresIn: '7d' }
     );
   }
 
   verifyToken(token) {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, env.jwtSecret);
   }
 }
 

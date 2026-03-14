@@ -1,11 +1,12 @@
-const authService = require('../services/authService');
-const userRepository = require('../repositories/userRepository');
+const authService = require('../services/authService.jsx');
+const userRepository = require('../repositories/userRepository.jsx');
+const AppError = require('../utils/appError.jsx');
 
 async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token não fornecido' });
+    return next(new AppError('Token não fornecido', 401));
   }
 
   const token = authHeader.split(' ')[1];
@@ -15,7 +16,7 @@ async function authMiddleware(req, res, next) {
     const user = await userRepository.findById(decoded.id);
 
     if (!user || !user.active) {
-      return res.status(401).json({ error: 'Usuário não autorizado' });
+      return next(new AppError('Usuário não autorizado', 401));
     }
 
     req.user = {
@@ -23,18 +24,18 @@ async function authMiddleware(req, res, next) {
       email: user.email,
       role: user.role,
     };
-    next();
+    return next();
   } catch {
-    return res.status(401).json({ error: 'Token inválido' });
+    return next(new AppError('Token inválido', 401));
   }
 }
 
 function authorizeRoles(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Acesso negado' });
+      return next(new AppError('Acesso negado', 403));
     }
-    next();
+    return next();
   };
 }
 
