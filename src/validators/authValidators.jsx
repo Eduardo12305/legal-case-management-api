@@ -42,6 +42,7 @@ function registerBody(body) {
     inviteToken: typeof data.inviteToken === 'string' ? data.inviteToken : undefined,
     email: requireString(data.email, 'Email'),
     password: data.password === undefined ? TEMPORARY_PASSWORD : requireString(data.password, 'Senha'),
+    useTemporaryPassword: data.password === undefined,
     name: requireString(data.name, 'Nome'),
     phone: optionalDigits(data.phone, 'Telefone', { minLength: 10, maxLength: 11 }),
     role,

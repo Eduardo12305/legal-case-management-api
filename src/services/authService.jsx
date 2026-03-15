@@ -61,7 +61,7 @@ class AuthService {
     };
   }
 
-  async register({ email, password, name, phone, role, inviteToken, clientData }) {
+  async register({ email, password, useTemporaryPassword, name, phone, role, inviteToken, clientData }) {
     const normalizedRole = ensureEnumValue(role, ALLOWED_ROLES, 'Perfil') || 'CLIENT';
     if (!INVITED_REGISTRATION_ROLES.includes(normalizedRole)) {
       throw new Error('Perfil inválido para cadastro');
@@ -81,7 +81,7 @@ class AuthService {
       throw new Error('CPF é obrigatório para clientes');
     }
 
-    if (password !== undefined && normalizedPassword.length < 8) {
+    if (!useTemporaryPassword && normalizedPassword.length < 8) {
       throw new Error('A senha deve ter pelo menos 8 caracteres');
     }
 

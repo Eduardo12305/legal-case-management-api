@@ -3,7 +3,12 @@ const authController = require('../controllers/authController.jsx');
 const { authMiddleware, authorizeRoles } = require('../middlewares/auth.jsx');
 const validateRequest = require('../middlewares/validateRequest.jsx');
 const asyncHandler = require('../utils/asyncHandler.jsx');
-const { inviteBody, loginBody, registerBody, verifyEmailQuery } = require('../validators/authValidators.jsx');
+const {
+  inviteBody,
+  loginBody,
+  registerBody,
+  verifyEmailQuery,
+} = require('../validators/authValidators.jsx');
 
 const router = Router();
 
