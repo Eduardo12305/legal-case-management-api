@@ -6,6 +6,38 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function normalizeDigitString(value, fieldName, { exactLength, minLength, maxLength } = {}) {
+  if (!isNonEmptyString(value)) {
+    throw new Error(`${fieldName} é obrigatório`);
+  }
+
+  const digits = String(value).replace(/\D/g, '');
+  if (!digits) {
+    throw new Error(`${fieldName} inválido`);
+  }
+
+  if (exactLength !== undefined && digits.length !== exactLength) {
+    throw new Error(`${fieldName} inválido`);
+  }
+
+  if (minLength !== undefined && digits.length < minLength) {
+    throw new Error(`${fieldName} inválido`);
+  }
+
+  if (maxLength !== undefined && digits.length > maxLength) {
+    throw new Error(`${fieldName} inválido`);
+  }
+
+  return digits;
+}
+
+function normalizeOptionalDigitString(value, fieldName, options = {}) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+
+  return normalizeDigitString(value, fieldName, options);
+}
+
 function normalizeOptionalString(value, fieldName = 'Campo') {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -83,7 +115,9 @@ module.exports = {
   isPlainObject,
   normalizeDate,
   normalizeDecimal,
+  normalizeDigitString,
   normalizeOptionalString,
+  normalizeOptionalDigitString,
   normalizeRequiredString,
   parsePaginationParams,
 };

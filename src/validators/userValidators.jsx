@@ -1,4 +1,4 @@
-const { enumValue, idParams, optionalString, pagination, requireObject, requireString } = require('./commonValidators.jsx');
+const { enumValue, idParams, optionalDigits, optionalString, pagination, requireDigits, requireObject, requireString } = require('./commonValidators.jsx');
 const AppError = require('../utils/appError.jsx');
 const { STAFF_GRANTABLE_PERMISSIONS } = require('../modules/access-control/permissions.jsx');
 
@@ -17,7 +17,7 @@ function updateProfileBody(body) {
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'phone')) {
-    result.phone = optionalString(data.phone, 'Telefone');
+    result.phone = optionalDigits(data.phone, 'Telefone', { minLength: 10, maxLength: 11 });
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'avatarUrl')) {
@@ -32,7 +32,7 @@ function updateClientBody(body) {
   const result = {};
 
   if (Object.prototype.hasOwnProperty.call(data, 'cpf')) {
-    result.cpf = requireString(data.cpf, 'CPF');
+    result.cpf = requireDigits(data.cpf, 'CPF', { exactLength: 11 });
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'rg')) {
@@ -68,7 +68,7 @@ function updateClientBody(body) {
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'zipCode')) {
-    result.zipCode = optionalString(data.zipCode, 'CEP');
+    result.zipCode = optionalDigits(data.zipCode, 'CEP', { exactLength: 8 });
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'notes')) {

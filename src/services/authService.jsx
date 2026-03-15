@@ -12,6 +12,8 @@ const {
   ensureEnumValue,
   isPlainObject,
   normalizeDate,
+  normalizeDigitString,
+  normalizeOptionalDigitString,
   normalizeOptionalString,
   normalizeRequiredString,
 } = require('../utils/validation.jsx');
@@ -20,6 +22,7 @@ const { generateToken, normalizeDigits } = require('../utils/crypto.jsx');
 
 const ALLOWED_ROLES = ['ADMIN', 'LAWYER', 'STAFF', 'CLIENT'];
 const INVITED_REGISTRATION_ROLES = ['LAWYER', 'STAFF', 'CLIENT'];
+const TEMPORARY_PASSWORD = 'acls157';
 
 function normalizeClientData(clientData) {
   if (clientData === undefined) return undefined;
@@ -29,7 +32,7 @@ function normalizeClientData(clientData) {
 
   return {
     inviteToken: normalizeRequiredString(clientData.inviteToken, 'Invite token'),
-    cpf: normalizeRequiredString(clientData.cpf, 'CPF'),
+    cpf: normalizeDigitString(clientData.cpf, 'CPF', { exactLength: 11 }),
     rg: normalizeOptionalString(clientData.rg, 'RG'),
     birthDate: normalizeDate(clientData.birthDate, 'Data de nascimento'),
     profession: normalizeOptionalString(clientData.profession, 'Profissão'),
@@ -38,7 +41,7 @@ function normalizeClientData(clientData) {
     address: normalizeOptionalString(clientData.address, 'Endereço'),
     city: normalizeOptionalString(clientData.city, 'Cidade'),
     state: normalizeOptionalString(clientData.state, 'Estado'),
-    zipCode: normalizeOptionalString(clientData.zipCode, 'CEP'),
+    zipCode: normalizeOptionalDigitString(clientData.zipCode, 'CEP', { exactLength: 8 }),
     notes: normalizeOptionalString(clientData.notes, 'Observações'),
   };
 }
@@ -65,9 +68,11 @@ class AuthService {
     }
 
     const normalizedEmail = normalizeRequiredString(email, 'Email').toLowerCase();
-    const normalizedPassword = normalizeRequiredString(password, 'Senha');
+    const normalizedPassword = password === undefined
+      ? TEMPORARY_PASSWORD
+      : normalizeRequiredString(password, 'Senha');
     const normalizedName = normalizeRequiredString(name, 'Nome');
-    const normalizedPhone = normalizeOptionalString(phone, 'Telefone');
+    const normalizedPhone = normalizeOptionalDigitString(phone, 'Telefone', { minLength: 10, maxLength: 11 });
     const normalizedClientData = normalizedRole === 'CLIENT'
       ? normalizeClientData(clientData)
       : undefined;
@@ -76,7 +81,7 @@ class AuthService {
       throw new Error('CPF é obrigatório para clientes');
     }
 
-    if (normalizedPassword.length < 8) {
+    if (password !== undefined && normalizedPassword.length < 8) {
       throw new Error('A senha deve ter pelo menos 8 caracteres');
     }
 

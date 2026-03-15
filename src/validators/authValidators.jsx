@@ -1,19 +1,22 @@
 const AppError = require('../utils/appError.jsx');
 const {
   enumValue,
+  optionalDigits,
   optionalString,
+  requireDigits,
   requireObject,
   requireString,
 } = require('./commonValidators.jsx');
 
 const INVITED_REGISTRATION_ROLES = ['LAWYER', 'STAFF', 'CLIENT'];
+const TEMPORARY_PASSWORD = 'acls157';
 
 function validateClientData(clientData) {
   const data = requireObject(clientData, 'Dados do cliente');
 
   return {
     inviteToken: typeof data.inviteToken === 'string' ? data.inviteToken : undefined,
-    cpf: requireString(data.cpf, 'CPF'),
+    cpf: requireDigits(data.cpf, 'CPF', { exactLength: 11 }),
     rg: optionalString(data.rg, 'RG'),
     birthDate: data.birthDate,
     profession: optionalString(data.profession, 'Profissão'),
@@ -22,7 +25,7 @@ function validateClientData(clientData) {
     address: optionalString(data.address, 'Endereço'),
     city: optionalString(data.city, 'Cidade'),
     state: optionalString(data.state, 'Estado'),
-    zipCode: optionalString(data.zipCode, 'CEP'),
+    zipCode: optionalDigits(data.zipCode, 'CEP', { exactLength: 8 }),
     notes: optionalString(data.notes, 'Observações'),
   };
 }
@@ -38,9 +41,9 @@ function registerBody(body) {
   return {
     inviteToken: typeof data.inviteToken === 'string' ? data.inviteToken : undefined,
     email: requireString(data.email, 'Email'),
-    password: requireString(data.password, 'Senha'),
+    password: data.password === undefined ? TEMPORARY_PASSWORD : requireString(data.password, 'Senha'),
     name: requireString(data.name, 'Nome'),
-    phone: optionalString(data.phone, 'Telefone'),
+    phone: optionalDigits(data.phone, 'Telefone', { minLength: 10, maxLength: 11 }),
     role,
     clientData: role === 'CLIENT' ? validateClientData(data.clientData) : undefined,
   };

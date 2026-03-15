@@ -5,6 +5,8 @@ const AppError = require('../utils/appError.jsx');
 const {
   isPlainObject,
   normalizeDate,
+  normalizeDigitString,
+  normalizeOptionalDigitString,
   normalizeOptionalString,
   normalizeRequiredString,
 } = require('../utils/validation.jsx');
@@ -23,7 +25,7 @@ function buildUserProfileUpdate(data) {
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'phone')) {
-    updateData.phone = normalizeOptionalString(data.phone, 'Telefone');
+    updateData.phone = normalizeOptionalDigitString(data.phone, 'Telefone', { minLength: 10, maxLength: 11 });
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'avatarUrl')) {
@@ -53,7 +55,7 @@ function buildClientUpdate(data) {
   };
 
   if (Object.prototype.hasOwnProperty.call(data, 'cpf')) {
-    updateData.cpf = normalizeRequiredString(data.cpf, 'CPF');
+    updateData.cpf = normalizeDigitString(data.cpf, 'CPF', { exactLength: 11 });
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'birthDate')) {
@@ -62,7 +64,9 @@ function buildClientUpdate(data) {
 
   for (const field of simpleFields) {
     if (Object.prototype.hasOwnProperty.call(data, field)) {
-      updateData[field] = normalizeOptionalString(data[field], fieldLabels[field]);
+      updateData[field] = field === 'zipCode'
+        ? normalizeOptionalDigitString(data[field], fieldLabels[field], { exactLength: 8 })
+        : normalizeOptionalString(data[field], fieldLabels[field]);
     }
   }
 

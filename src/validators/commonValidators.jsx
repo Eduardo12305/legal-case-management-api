@@ -1,5 +1,11 @@
 const AppError = require('../utils/appError.jsx');
-const { ensureEnumValue, isPlainObject, parsePaginationParams } = require('../utils/validation.jsx');
+const {
+  ensureEnumValue,
+  isPlainObject,
+  normalizeDigitString,
+  normalizeOptionalDigitString,
+  parsePaginationParams,
+} = require('../utils/validation.jsx');
 
 function requireObject(value, fieldName) {
   if (!isPlainObject(value)) {
@@ -28,6 +34,22 @@ function optionalString(value, fieldName) {
   return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
+function requireDigits(value, fieldName, options = {}) {
+  try {
+    return normalizeDigitString(value, fieldName, options);
+  } catch (error) {
+    throw new AppError(error.message, 400);
+  }
+}
+
+function optionalDigits(value, fieldName, options = {}) {
+  try {
+    return normalizeOptionalDigitString(value, fieldName, options);
+  } catch (error) {
+    throw new AppError(error.message, 400);
+  }
+}
+
 function enumValue(value, allowedValues, fieldName) {
   const validated = ensureEnumValue(value, allowedValues, fieldName);
   if (value !== undefined && !validated) {
@@ -52,8 +74,10 @@ function idParams(params, fieldName = 'id') {
 module.exports = {
   enumValue,
   idParams,
+  optionalDigits,
   optionalString,
   pagination,
+  requireDigits,
   requireObject,
   requireString,
 };
