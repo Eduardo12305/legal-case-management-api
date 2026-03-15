@@ -24,6 +24,18 @@ const ALLOWED_ROLES = ['ADMIN', 'LAWYER', 'STAFF', 'CLIENT'];
 const INVITED_REGISTRATION_ROLES = ['LAWYER', 'STAFF', 'CLIENT'];
 const TEMPORARY_PASSWORD = 'acls157';
 
+function getCreatableRolesForActor(role) {
+  if (role === 'ADMIN') {
+    return ['LAWYER', 'STAFF', 'CLIENT'];
+  }
+
+  if (role === 'LAWYER' || role === 'STAFF') {
+    return ['CLIENT'];
+  }
+
+  return [];
+}
+
 function normalizeClientData(clientData) {
   if (clientData === undefined) return undefined;
   if (!isPlainObject(clientData)) {
@@ -47,13 +59,96 @@ function normalizeClientData(clientData) {
 }
 
 class AuthService {
+  async createProvisionedUser({ email, name, phone, role, clientData }) {
+    const normalizedEmail = normalizeRequiredString(email, 'Email').toLowerCase();
+    const normalizedName = normalizeRequiredString(name, 'Nome');
+    const normalizedPhone = normalizeOptionalDigitString(phone, 'Telefone', { minLength: 10, maxLength: 11 });
+    const normalizedRole = ensureEnumValue(role, ['LAWYER', 'STAFF', 'CLIENT'], 'Perfil');
+    const normalizedClientData = normalizedRole === 'CLIENT'
+      ? normalizeClientData(clientData)
+      : undefined;
+
+    const existingUser = await userRepository.findByEmail(normalizedEmail);
+    if (existingUser) {
+      throw new Error('Email já cadastrado');
+    }
+
+    if (normalizedRole === 'CLIENT') {
+      if (!normalizedClientData) {
+        throw new Error('CPF é obrigatório para clientes');
+      }
+
+      const existingCpf = await clientRepository.findByCpf(normalizedClientData.cpf);
+      if (existingCpf) {
+        throw new Error('CPF já cadastrado');
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(TEMPORARY_PASSWORD, 10);
+    const createdUserId = randomUUID();
+
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO users (
+          id, email, password, name, phone, role, active, is_first_login,
+          email_verified, email_verified_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [
+          createdUserId,
+          normalizedEmail,
+          hashedPassword,
+          normalizedName,
+          normalizedPhone ?? null,
+          normalizedRole,
+          true,
+          true,
+          !env.emailVerificationRequired,
+          env.emailVerificationRequired ? null : new Date(),
+        ],
+      );
+
+      if (normalizedRole === 'CLIENT') {
+        const { inviteToken, ...clientPayload } = normalizedClientData;
+        await tx.execute(
+          `INSERT INTO clients (
+            id, user_id, cpf, rg, birth_date, profession, nationality,
+            marital_status, address, city, state, zip_code, notes, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [
+            randomUUID(),
+            createdUserId,
+            clientPayload.cpf,
+            clientPayload.rg ?? null,
+            clientPayload.birthDate ?? null,
+            clientPayload.profession ?? null,
+            clientPayload.nationality ?? 'Brasileiro(a)',
+            clientPayload.maritalStatus ?? null,
+            clientPayload.address ?? null,
+            clientPayload.city ?? null,
+            clientPayload.state ?? null,
+            clientPayload.zipCode ?? null,
+            clientPayload.notes ?? null,
+          ],
+        );
+      }
+    });
+
+    const user = await userRepository.findById(createdUserId);
+    return {
+      user: sanitizeUser(user),
+      temporaryPassword: TEMPORARY_PASSWORD,
+      message: 'Usuário criado com sucesso.',
+    };
+  }
+
   getInviteOptions(actor) {
-    if (actor.role !== 'ADMIN') {
+    const creatableRoles = getCreatableRolesForActor(actor.role);
+    if (!creatableRoles.length) {
       throw new Error('Acesso negado');
     }
 
     return {
-      creatableRoles: ['LAWYER', 'STAFF', 'CLIENT'],
+      creatableRoles,
       notes: {
         adminCreation: 'Contas ADMIN devem ser provisionadas por seed ou infraestrutura.',
         loginIdentifiers: 'Clientes podem autenticar com email ou CPF. Usuários internos usam email.',
@@ -220,13 +315,25 @@ class AuthService {
     return { user: sanitizeUser(user), token };
   }
 
-  async createInvite(actor, { email, role, expiresInHours = 72 }) {
-    if (actor.role !== 'ADMIN') {
+  async createInvite(actor, { email, name, phone, role, clientData, expiresInHours = 72 }) {
+    const creatableRoles = getCreatableRolesForActor(actor.role);
+    if (!creatableRoles.length) {
       throw new Error('Acesso negado');
     }
 
+    const normalizedRole = ensureEnumValue(role, creatableRoles, 'Perfil');
+
+    if (!env.emailVerificationRequired) {
+      return this.createProvisionedUser({
+        email,
+        name,
+        phone,
+        role: normalizedRole,
+        clientData,
+      });
+    }
+
     const normalizedEmail = normalizeRequiredString(email, 'Email').toLowerCase();
-    const normalizedRole = ensureEnumValue(role, ['LAWYER', 'STAFF', 'CLIENT'], 'Perfil');
 
     const invite = await authRepository.createInvite({
       email: normalizedEmail,

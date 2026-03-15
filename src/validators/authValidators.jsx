@@ -63,9 +63,21 @@ function loginBody(body) {
 module.exports = {
   inviteBody: (body) => {
     const data = requireObject(body, 'Body');
+    const role = enumValue(data.role, ['LAWYER', 'STAFF', 'CLIENT'], 'Perfil');
+
+    if (role === 'CLIENT' && !data.clientData) {
+      throw new AppError('CPF é obrigatório para clientes', 400);
+    }
+
     return {
       email: requireString(data.email, 'Email'),
-      role: enumValue(data.role, ['LAWYER', 'STAFF', 'CLIENT'], 'Perfil'),
+      name: requireString(data.name, 'Nome'),
+      phone: optionalDigits(data.phone, 'Telefone', { minLength: 10, maxLength: 11 }),
+      role,
+      clientData: role === 'CLIENT' ? validateClientData({
+        ...requireObject(data.clientData, 'Dados do cliente'),
+        inviteToken: 'admin-provision',
+      }) : undefined,
       expiresInHours: data.expiresInHours ? Number(data.expiresInHours) : undefined,
     };
   },
