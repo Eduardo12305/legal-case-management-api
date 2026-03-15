@@ -212,7 +212,7 @@ Estrutura alvo:
 ```text
 src/
   app.jsx
-  server.jsx
+  server.js
   config/
   modules/
     access-control/
