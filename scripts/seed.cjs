@@ -104,13 +104,21 @@ async function main() {
   console.log(`LAWYER -> ${lawyer.email} / Lawyer@123`);
   console.log(`STAFF  -> ${staff.email} / Staff@123`);
   console.log(`CLIENT -> ${client.email} / Client@123`);
+
+  return { admin, lawyer, staff, client };
 }
 
-main()
-  .catch((error) => {
-    console.error('Erro ao executar seed:', error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await db.close();
-  });
+module.exports = {
+  runSeed: main,
+};
+
+if (require.main === module) {
+  main()
+    .catch((error) => {
+      console.error('Erro ao executar seed:', error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await db.close();
+    });
+}

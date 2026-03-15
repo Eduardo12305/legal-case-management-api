@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const db = require('../src/database/mysql.jsx');
 
-async function main() {
+async function initDatabase({ closeConnection = true } = {}) {
   const statements = [
     `CREATE TABLE IF NOT EXISTS users (
       id VARCHAR(36) PRIMARY KEY,
@@ -169,13 +169,20 @@ async function main() {
   }
 
   console.log('Banco inicializado com sucesso.');
+
+  if (closeConnection) {
+    await db.close();
+  }
 }
 
-main()
-  .catch((error) => {
-    console.error('Erro ao inicializar banco:', error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await db.close();
-  });
+module.exports = {
+  initDatabase,
+};
+
+if (require.main === module) {
+  initDatabase()
+    .catch((error) => {
+      console.error('Erro ao inicializar banco:', error);
+      process.exitCode = 1;
+    });
+}

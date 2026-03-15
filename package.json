@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node scripts/startup.cjs",
     "dev": "node --watch server.js",
     "db:init": "node scripts/db-init.cjs",
     "seed": "node scripts/seed.cjs",
