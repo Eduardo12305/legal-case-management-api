@@ -60,6 +60,17 @@ function loginBody(body) {
   };
 }
 
+function firstAccessPasswordBody(body) {
+  const data = requireObject(body, 'Body');
+  const identifier = data.identifier ?? data.email;
+
+  return {
+    identifier: requireString(identifier, 'Login'),
+    currentPassword: requireString(data.currentPassword, 'Senha atual'),
+    newPassword: requireString(data.newPassword, 'Nova senha'),
+  };
+}
+
 module.exports = {
   inviteBody: (body) => {
     const data = requireObject(body, 'Body');
@@ -81,6 +92,7 @@ module.exports = {
       expiresInHours: data.expiresInHours ? Number(data.expiresInHours) : undefined,
     };
   },
+  firstAccessPasswordBody,
   loginBody,
   registerBody,
   verifyEmailQuery: (query) => {

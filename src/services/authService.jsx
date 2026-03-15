@@ -391,6 +391,48 @@ class AuthService {
     return { message: 'Senha alterada com sucesso' };
   }
 
+  async completeFirstAccess({ identifier, currentPassword, newPassword }) {
+    const normalizedIdentifier = normalizeRequiredString(identifier, 'Login');
+    const normalizedCurrentPassword = normalizeRequiredString(currentPassword, 'Senha atual');
+    const normalizedNewPassword = normalizeRequiredString(newPassword, 'Nova senha');
+
+    if (normalizedNewPassword.length < 8) {
+      throw new Error('A nova senha deve ter pelo menos 8 caracteres');
+    }
+
+    if (normalizedCurrentPassword === normalizedNewPassword) {
+      throw new Error('A nova senha deve ser diferente da senha temporária');
+    }
+
+    const user = await this.findUserForLogin(normalizedIdentifier);
+    if (!user) {
+      throw new Error('Credenciais inválidas');
+    }
+
+    if (!user.active) {
+      throw new Error('Conta desativada');
+    }
+
+    const validPassword = await bcrypt.compare(normalizedCurrentPassword, user.password);
+    if (!validPassword) {
+      throw new Error('Senha atual incorreta');
+    }
+
+    if (!user.isFirstLogin) {
+      throw new Error('Este usuário já concluiu o primeiro acesso');
+    }
+
+    const hashedPassword = await bcrypt.hash(normalizedNewPassword, 10);
+    await userRepository.update(user.id, { password: hashedPassword, isFirstLogin: false });
+
+    const updatedUser = await userRepository.findById(user.id);
+    return {
+      message: 'Senha alterada com sucesso',
+      user: sanitizeUser(updatedUser),
+      token: this.generateToken(updatedUser),
+    };
+  }
+
   generateToken(user) {
     return jwt.sign(
       { id: user.id, email: user.email, role: user.role },

@@ -11,6 +11,11 @@ class AuthController {
     return res.json(result);
   }
 
+  async completeFirstAccess(req, res) {
+    const result = await authService.completeFirstAccess(req.body);
+    return res.json(result);
+  }
+
   async getInviteOptions(req, res) {
     const result = authService.getInviteOptions(req.user);
     return res.json(result);
