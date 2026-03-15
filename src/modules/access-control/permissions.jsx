@@ -60,6 +60,8 @@ const rolePermissions = Object.freeze({
     Permissions.SETTINGS_MANAGE,
     Permissions.REPORTS_VIEW,
     Permissions.AUDIT_VIEW,
+    Permissions.PROCESS_VIEW,
+    Permissions.PROCESS_DELETE,
     Permissions.STAFF_PERMISSION_MANAGE,
   ],
   [Roles.LAWYER]: [

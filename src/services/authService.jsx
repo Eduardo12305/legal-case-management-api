@@ -108,6 +108,8 @@ class AuthService {
           name: normalizedName,
           phone: normalizedPhone,
           role: normalizedRole,
+          emailVerified: !env.emailVerificationRequired,
+          emailVerifiedAt: env.emailVerificationRequired ? null : new Date(),
         },
       });
 
@@ -128,26 +130,32 @@ class AuthService {
     });
 
     await authRepository.markInviteAsUsed(invite.id);
-    const verificationToken = generateToken(24);
-    await authRepository.createEmailVerificationToken({
-      userId: result.id,
-      token: verificationToken,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
-    });
+    let verificationToken;
 
-    await emailService.send({
-      to: result.email,
-      ...buildVerificationEmail({
-        name: result.name,
+    if (env.emailVerificationRequired) {
+      verificationToken = generateToken(24);
+      await authRepository.createEmailVerificationToken({
+        userId: result.id,
         token: verificationToken,
-        loginHint: result.role === 'CLIENT' ? 'email ou CPF' : 'email',
-      }),
-    });
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
+      });
+
+      await emailService.send({
+        to: result.email,
+        ...buildVerificationEmail({
+          name: result.name,
+          token: verificationToken,
+          loginHint: result.role === 'CLIENT' ? 'email ou CPF' : 'email',
+        }),
+      });
+    }
 
     return {
       user: sanitizeUser(result),
-      message: 'Cadastro concluído. Confirme o email antes de acessar a plataforma.',
-      verificationToken: env.nodeEnv === 'development' ? verificationToken : undefined,
+      message: env.emailVerificationRequired
+        ? 'Cadastro concluído. Confirme o email antes de acessar a plataforma.'
+        : 'Cadastro concluído. Acesso liberado sem confirmação de email.',
+      verificationToken: env.nodeEnv === 'development' && env.emailVerificationRequired ? verificationToken : undefined,
     };
   }
 
@@ -164,7 +172,7 @@ class AuthService {
       throw new Error('Conta desativada');
     }
 
-    if (!user.emailVerified) {
+    if (env.emailVerificationRequired && !user.emailVerified) {
       throw new Error('Email não confirmado');
     }
 
