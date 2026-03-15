@@ -24,7 +24,7 @@ Padrao recomendado:
 
 - `domain`: regras centrais do negocio.
 - `application`: use cases.
-- `infrastructure`: persistencia, HTTP, Prisma, logs.
+- `infrastructure`: persistencia, HTTP e logs.
 - `interfaces`: controllers e rotas.
 
 No estado atual do projeto, foi adicionada uma base intermediaria que introduz:
@@ -52,7 +52,7 @@ No estado atual do projeto, foi adicionada uma base intermediaria que introduz:
 - `ProcessVersion`
 - `ProcessAssignment`
 
-Essas entidades foram adicionadas ao [prisma/schema.prisma](/home/luis-eduardo/Documentos/projetos/Advon/prisma/schema.prisma).
+Essas entidades foram refletidas na camada de persistencia em MySQL e nos repositorios da aplicacao.
 
 ## 4. RBAC
 

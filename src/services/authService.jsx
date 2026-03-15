@@ -1,9 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { randomUUID } = require('crypto');
 const userRepository = require('../repositories/userRepository.jsx');
 const clientRepository = require('../repositories/clientRepository.jsx');
 const authRepository = require('../repositories/authRepository.jsx');
-const prisma = require('../database/prisma.jsx');
+const db = require('../database/mysql.jsx');
 const env = require('../config/env.jsx');
 const emailService = require('./emailService.jsx');
 const { buildInviteEmail, buildVerificationEmail } = require('./emailTemplateService.jsx');
@@ -100,34 +101,55 @@ class AuthService {
 
     const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email: normalizedEmail,
-          password: hashedPassword,
-          name: normalizedName,
-          phone: normalizedPhone,
-          role: normalizedRole,
-          emailVerified: !env.emailVerificationRequired,
-          emailVerifiedAt: env.emailVerificationRequired ? null : new Date(),
-        },
-      });
+    const createdUserId = randomUUID();
+
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO users (
+          id, email, password, name, phone, role, active, is_first_login,
+          email_verified, email_verified_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [
+          createdUserId,
+          normalizedEmail,
+          hashedPassword,
+          normalizedName,
+          normalizedPhone ?? null,
+          normalizedRole,
+          true,
+          true,
+          !env.emailVerificationRequired,
+          env.emailVerificationRequired ? null : new Date(),
+        ],
+      );
 
       if (normalizedRole === 'CLIENT') {
         const { inviteToken, ...clientPayload } = normalizedClientData;
-        await tx.client.create({
-          data: {
-            userId: user.id,
-            ...clientPayload,
-          },
-        });
+        await tx.execute(
+          `INSERT INTO clients (
+            id, user_id, cpf, rg, birth_date, profession, nationality,
+            marital_status, address, city, state, zip_code, notes, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [
+            randomUUID(),
+            createdUserId,
+            clientPayload.cpf,
+            clientPayload.rg ?? null,
+            clientPayload.birthDate ?? null,
+            clientPayload.profession ?? null,
+            clientPayload.nationality ?? 'Brasileiro(a)',
+            clientPayload.maritalStatus ?? null,
+            clientPayload.address ?? null,
+            clientPayload.city ?? null,
+            clientPayload.state ?? null,
+            clientPayload.zipCode ?? null,
+            clientPayload.notes ?? null,
+          ],
+        );
       }
-
-      return await tx.user.findUnique({
-        where: { id: user.id },
-        include: { client: true, userPermissions: true },
-      });
     });
+
+    const result = await userRepository.findById(createdUserId);
 
     await authRepository.markInviteAsUsed(invite.id);
     let verificationToken;

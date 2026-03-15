@@ -45,12 +45,12 @@ class ClientService {
       clients: result.clients.map((client) => ({
         id: client.id,
         userId: client.userId,
-        name: client.user.name,
-        email: client.user.email,
-        phone: client.user.phone,
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
         cpf: client.cpf,
-        active: client.user.active,
-        processCount: client.processes.length,
+        active: Boolean(client.active),
+        processCount: Number(client.processCount || 0),
       })),
     };
   }

@@ -181,35 +181,13 @@ class ProcessService {
     const resolvedClientId = await this.resolveClientId(clientId);
 
     if (actor?.role === 'LAWYER') {
-      const result = await processRepository.findByClientId(resolvedClientId, {
+      return processRepository.findByClientId(resolvedClientId, {
         ...pagination,
         lawyerId: actor.id,
       });
-
-      console.log('[process:getByClientId]', {
-        actorId: actor.id,
-        actorRole: actor.role,
-        requestedClientId: clientId,
-        resolvedClientId,
-        total: result.total,
-        returned: result.processes.length,
-      });
-
-      return result;
     }
 
-    const result = await processRepository.findByClientId(resolvedClientId, pagination);
-
-    console.log('[process:getByClientId]', {
-      actorId: actor?.id,
-      actorRole: actor?.role,
-      requestedClientId: clientId,
-      resolvedClientId,
-      total: result.total,
-      returned: result.processes.length,
-    });
-
-    return result;
+    return processRepository.findByClientId(resolvedClientId, pagination);
   }
 
   async getMyProcesses(userId, pagination) {

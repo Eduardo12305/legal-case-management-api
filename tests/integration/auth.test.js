@@ -1,7 +1,8 @@
 const request = require('supertest');
 const app = require('../../src/app.jsx');
-const { disconnectDatabase, prisma, resetDatabase } = require('../helpers/database');
+const { disconnectDatabase, db, resetDatabase } = require('../helpers/database');
 const { createUser } = require('../helpers/userFactory');
+const { randomUUID } = require('crypto');
 
 describe('Auth routes', () => {
   beforeEach(async () => {
@@ -13,14 +14,11 @@ describe('Auth routes', () => {
   });
 
   it('registers a client successfully', async () => {
-    await prisma.registrationInvite.create({
-      data: {
-        email: 'client@test.com',
-        role: 'CLIENT',
-        token: 'invite-client-test',
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-      },
-    });
+    await db.execute(
+      `INSERT INTO registration_invites (id, email, role, token, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [randomUUID(), 'client@test.com', 'CLIENT', 'invite-client-test', new Date(Date.now() + 60 * 60 * 1000)],
+    );
 
     const response = await request(app)
       .post('/api/auth/register')

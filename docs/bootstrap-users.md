@@ -29,8 +29,7 @@ Boas praticas adotadas:
 Depois de preparar o banco:
 
 ```bash
-npx prisma generate
-npx prisma db push
+npm run db:init
 npm run seed
 ```
 

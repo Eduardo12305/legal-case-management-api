@@ -1,4 +1,5 @@
-const { prisma } = require('./database');
+const { randomUUID } = require('crypto');
+const { db } = require('./database');
 
 let processSequence = 1;
 
@@ -7,31 +8,33 @@ async function createProcess(overrides = {}) {
     throw new Error('clientId é obrigatório para criar processo de teste');
   }
 
-  const process = await prisma.process.create({
-    data: {
-      clientId: overrides.clientId,
-      lawyerId: overrides.lawyerId || null,
-      processNumber: overrides.processNumber || `PROC-${processSequence++}`,
-      title: overrides.title || 'Processo de teste',
-      description: overrides.description || null,
-      court: overrides.court || null,
-      instance: overrides.instance || null,
-      subject: overrides.subject || null,
-      status: overrides.status || 'ACTIVE',
-      value: overrides.value,
-    },
-    include: {
-      client: {
-        include: {
-          user: true,
-        },
-      },
-      documents: true,
-      updates: true,
-    },
-  });
+  const processId = randomUUID();
+  await db.execute(
+    `INSERT INTO processes (
+      id, client_id, lawyer_id, process_number, title, description, court,
+      instance, subject, status, value, start_date, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+    [
+      processId,
+      overrides.clientId,
+      overrides.lawyerId || null,
+      overrides.processNumber || `PROC-${processSequence++}`,
+      overrides.title || 'Processo de teste',
+      overrides.description || null,
+      overrides.court || null,
+      overrides.instance || null,
+      overrides.subject || null,
+      overrides.status || 'ACTIVE',
+      overrides.value ?? null,
+    ],
+  );
 
-  return process;
+  return db.one(
+    `SELECT id, client_id AS clientId, lawyer_id AS lawyerId, process_number AS processNumber,
+            title, description, court, instance, subject, status, value
+     FROM processes WHERE id = ? LIMIT 1`,
+    [processId],
+  );
 }
 
 module.exports = {

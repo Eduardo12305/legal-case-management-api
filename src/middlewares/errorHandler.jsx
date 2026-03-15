@@ -27,10 +27,6 @@ function resolveStatusCode(error) {
     return ERROR_STATUS_BY_MESSAGE.get(error.message);
   }
 
-  if (error.name === 'PrismaClientKnownRequestError') {
-    return 400;
-  }
-
   return 500;
 }
 
