@@ -6,12 +6,13 @@ const {
   requireString,
 } = require('./commonValidators.jsx');
 
-const ALLOWED_ROLES = ['ADMIN', 'LAWYER', 'CLIENT'];
+const INVITED_REGISTRATION_ROLES = ['LAWYER', 'STAFF', 'CLIENT'];
 
 function validateClientData(clientData) {
   const data = requireObject(clientData, 'Dados do cliente');
 
   return {
+    inviteToken: typeof data.inviteToken === 'string' ? data.inviteToken : undefined,
     cpf: requireString(data.cpf, 'CPF'),
     rg: optionalString(data.rg, 'RG'),
     birthDate: data.birthDate,
@@ -28,13 +29,14 @@ function validateClientData(clientData) {
 
 function registerBody(body) {
   const data = requireObject(body, 'Body');
-  const role = enumValue(data.role, ALLOWED_ROLES, 'Perfil') || 'CLIENT';
+  const role = data.role === undefined ? 'CLIENT' : enumValue(data.role, INVITED_REGISTRATION_ROLES, 'Perfil');
 
   if (role === 'CLIENT' && !data.clientData) {
     throw new AppError('CPF é obrigatório para clientes', 400);
   }
 
   return {
+    inviteToken: typeof data.inviteToken === 'string' ? data.inviteToken : undefined,
     email: requireString(data.email, 'Email'),
     password: requireString(data.password, 'Senha'),
     name: requireString(data.name, 'Nome'),
@@ -46,14 +48,29 @@ function registerBody(body) {
 
 function loginBody(body) {
   const data = requireObject(body, 'Body');
+  const identifier = data.identifier ?? data.email;
 
   return {
-    email: requireString(data.email, 'Email'),
+    identifier: requireString(identifier, 'Login'),
     password: requireString(data.password, 'Senha'),
   };
 }
 
 module.exports = {
+  inviteBody: (body) => {
+    const data = requireObject(body, 'Body');
+    return {
+      email: requireString(data.email, 'Email'),
+      role: enumValue(data.role, ['LAWYER', 'STAFF', 'CLIENT'], 'Perfil'),
+      expiresInHours: data.expiresInHours ? Number(data.expiresInHours) : undefined,
+    };
+  },
   loginBody,
   registerBody,
+  verifyEmailQuery: (query) => {
+    const data = requireObject(query || {}, 'Query');
+    return {
+      token: requireString(data.token, 'token'),
+    };
+  },
 };

@@ -1,6 +1,8 @@
 const { enumValue, idParams, optionalString, pagination, requireObject, requireString } = require('./commonValidators.jsx');
+const AppError = require('../utils/appError.jsx');
+const { STAFF_GRANTABLE_PERMISSIONS } = require('../modules/access-control/permissions.jsx');
 
-const ALLOWED_ROLES = ['ADMIN', 'LAWYER', 'CLIENT'];
+const ALLOWED_ROLES = ['ADMIN', 'LAWYER', 'STAFF', 'CLIENT'];
 
 function updateProfileBody(body) {
   const data = requireObject(body, 'Body');
@@ -97,6 +99,24 @@ function listUsersQuery(query) {
 module.exports = {
   changePasswordBody,
   listUsersQuery,
+  setStaffPermissionsBody: (body) => {
+    const data = requireObject(body, 'Body');
+
+    if (!Array.isArray(data.permissions)) {
+      throw new AppError('permissions deve ser uma lista', 400);
+    }
+
+    const normalizedPermissions = [...new Set(data.permissions.map((permission) => requireString(permission, 'Permissão')))];
+    const invalidPermissions = normalizedPermissions.filter((permission) => !STAFF_GRANTABLE_PERMISSIONS.includes(permission));
+
+    if (invalidPermissions.length > 0) {
+      throw new AppError('Permissões inválidas para STAFF', 400, { invalidPermissions });
+    }
+
+    return {
+      permissions: normalizedPermissions,
+    };
+  },
   toggleUserParams: (params) => idParams(params, 'id'),
   updateClientBody,
   updateProfileBody,

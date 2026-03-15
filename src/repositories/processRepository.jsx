@@ -26,13 +26,19 @@ class ProcessRepository {
     });
   }
 
-  async findByClientId(clientId, { page = 1, limit = 20 } = {}) {
+  async findByClientId(clientId, { lawyerId, status, page = 1, limit = 20 } = {}) {
     const where = { clientId };
+    if (lawyerId) where.lawyerId = lawyerId;
+    if (status) where.status = status;
 
     const [processes, total] = await Promise.all([
       prisma.process.findMany({
         where,
-        include: { documents: true, updates: { orderBy: { createdAt: 'desc' }, take: 3 } },
+        include: {
+          client: { include: { user: true } },
+          documents: true,
+          updates: { orderBy: { createdAt: 'desc' }, take: 3 },
+        },
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -43,9 +49,10 @@ class ProcessRepository {
     return { processes, total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async findAll({ status, page = 1, limit = 20 }) {
+  async findAll({ status, lawyerId, page = 1, limit = 20 }) {
     const where = {};
     if (status) where.status = status;
+    if (lawyerId) where.lawyerId = lawyerId;
 
     const [processes, total] = await Promise.all([
       prisma.process.findMany({
@@ -65,7 +72,11 @@ class ProcessRepository {
     return prisma.process.update({
       where: { id },
       data,
-      include: { client: { include: { user: true } } },
+      include: {
+        client: { include: { user: true } },
+        documents: true,
+        updates: { orderBy: { createdAt: 'desc' } },
+      },
     });
   }
 

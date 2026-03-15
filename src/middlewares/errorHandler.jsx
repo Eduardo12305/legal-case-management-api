@@ -7,10 +7,15 @@ const ERROR_STATUS_BY_MESSAGE = new Map([
   ['Credenciais inválidas', 401],
   ['Conta desativada', 403],
   ['Acesso negado', 403],
+  ['Permissão insuficiente', 403],
+  ['Email não confirmado', 403],
+  ['Você não pode inativar a própria conta', 400],
+  ['Não é permitido inativar o último admin ativo', 400],
   ['Usuário não encontrado', 404],
   ['Cliente não encontrado', 404],
   ['Processo não encontrado', 404],
   ['Perfil de cliente não encontrado', 404],
+  ['Destinatário não encontrado', 404],
 ]);
 
 function resolveStatusCode(error) {

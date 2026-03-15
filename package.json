@@ -10,9 +10,13 @@
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:migrate:deploy": "npx prisma migrate deploy",
     "prisma:push": "npx prisma db push",
+    "seed": "node scripts/seed.cjs",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
-    "test": "echo \"Tests not configured yet\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db:generate": "node scripts/prisma-test.cjs generate",
+    "test:db:push": "node scripts/prisma-test.cjs db push"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +28,11 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^6.10.1",
     "prisma": "^6.19.2"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.4",
+    "vitest": "^3.2.4"
   }
 }

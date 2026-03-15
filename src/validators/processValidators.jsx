@@ -1,20 +1,55 @@
 const { enumValue, idParams, optionalString, pagination, requireObject, requireString } = require('./commonValidators.jsx');
 
 const ALLOWED_PROCESS_STATUS = ['ACTIVE', 'ARCHIVED', 'SUSPENDED', 'CLOSED', 'WON', 'LOST'];
+const PROCESS_STATUS_ALIASES = {
+  active: 'ACTIVE',
+  ativo: 'ACTIVE',
+  archived: 'ARCHIVED',
+  arquivado: 'ARCHIVED',
+  suspended: 'SUSPENDED',
+  suspenso: 'SUSPENDED',
+  closed: 'CLOSED',
+  fechado: 'CLOSED',
+  won: 'WON',
+  ganho: 'WON',
+  lost: 'LOST',
+  perdido: 'LOST',
+};
+
+function normalizeStatusInput(status) {
+  if (status === undefined) {
+    return undefined;
+  }
+
+  if (typeof status !== 'string') {
+    return status;
+  }
+
+  const trimmedStatus = status.trim();
+  if (!trimmedStatus) {
+    return undefined;
+  }
+
+  return PROCESS_STATUS_ALIASES[trimmedStatus.toLowerCase()] || trimmedStatus.toUpperCase();
+}
 
 function createProcessBody(body) {
   const data = requireObject(body, 'Body');
+  const processNumber = typeof data.processNumber === 'string' && data.processNumber.trim()
+    ? data.processNumber
+    : data.number;
 
   return {
     clientId: requireString(data.clientId, 'ClientId'),
     lawyerId: optionalString(data.lawyerId, 'Advogado'),
-    processNumber: requireString(data.processNumber, 'Número do processo'),
+    processNumber: requireString(processNumber, 'Número do processo'),
     title: requireString(data.title, 'Título'),
     description: optionalString(data.description, 'Descrição'),
     court: optionalString(data.court, 'Tribunal'),
     instance: optionalString(data.instance, 'Instância'),
     subject: optionalString(data.subject, 'Assunto'),
     value: data.value,
+    status: normalizeStatusInput(data.status),
   };
 }
 
@@ -59,7 +94,7 @@ function updateProcessBody(body) {
   }
 
   if (Object.prototype.hasOwnProperty.call(data, 'status')) {
-    result.status = enumValue(data.status, ALLOWED_PROCESS_STATUS, 'Status');
+    result.status = enumValue(normalizeStatusInput(data.status), ALLOWED_PROCESS_STATUS, 'Status');
   }
 
   return result;
@@ -69,7 +104,7 @@ function updateStatusBody(body) {
   const data = requireObject(body, 'Body');
 
   return {
-    status: enumValue(requireString(data.status, 'Status'), ALLOWED_PROCESS_STATUS, 'Status'),
+    status: enumValue(normalizeStatusInput(requireString(data.status, 'Status')), ALLOWED_PROCESS_STATUS, 'Status'),
   };
 }
 
@@ -97,7 +132,7 @@ function listAllQuery(query) {
 
   return {
     ...parsedPagination,
-    status: enumValue(query.status, ALLOWED_PROCESS_STATUS, 'Status'),
+    status: enumValue(normalizeStatusInput(query.status), ALLOWED_PROCESS_STATUS, 'Status'),
   };
 }
 

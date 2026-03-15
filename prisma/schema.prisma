@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   ADMIN
   LAWYER
+  STAFF
   CLIENT
 }
 
@@ -22,6 +23,57 @@ enum ProcessStatus {
   LOST
 }
 
+enum AuditAction {
+  LOGIN
+  USER_CREATED
+  USER_UPDATED
+  USER_ROLE_CHANGED
+  USER_PERMISSION_CHANGED
+  PROCESS_CREATED
+  PROCESS_UPDATED
+  PROCESS_STATUS_CHANGED
+  PROCESS_DELETED
+  PROCESS_ASSIGNED
+  DOCUMENT_ADDED
+  LEGAL_EVENT_CREATED
+}
+
+enum AuditEntityType {
+  USER
+  CLIENT
+  PROCESS
+  DOCUMENT
+  LEGAL_EVENT
+  SYSTEM
+}
+
+enum LegalEventType {
+  PROCESS_CREATED
+  STATUS_CHANGED
+  DOCUMENT_ADDED
+  LAWYER_ASSIGNED
+  NOTE_ADDED
+  INTERNAL_MOVEMENT
+  CLIENT_CONTACT
+}
+
+enum ProcessAssignmentRole {
+  RESPONSIBLE
+  SUPPORTING
+}
+
+enum PermissionCode {
+  CLIENT_CREATE
+  CLIENT_VIEW
+  CLIENT_UPDATE
+  DOCUMENT_UPLOAD
+  PROCESS_VIEW_ASSIGNED
+  PROCESS_INTAKE_CREATE
+  LEGAL_EVENT_CREATE
+  FINANCIAL_VIEW
+  FINANCIAL_MANAGE
+}
+
 model User {
   id             String   @id @default(uuid())
   email          String   @unique
@@ -32,6 +84,8 @@ model User {
   avatarUrl      String?
   isFirstLogin Boolean @default(true)
   active         Boolean  @default(true)
+  emailVerified  Boolean  @default(false)
+  emailVerifiedAt DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -39,6 +93,15 @@ model User {
   lawyerProcesses   Process[]     @relation("LawyerProcesses")
   sentMessages      ChatMessage[] @relation("Sender")
   receivedMessages  ChatMessage[] @relation("Recipient")
+  auditLogs         AuditLog[]    @relation("AuditActor")
+  legalEvents       LegalEvent[]  @relation("LegalEventAuthor")
+  processVersions   ProcessVersion[] @relation("ProcessVersionAuthor")
+  assignedProcesses ProcessAssignment[] @relation("AssignedLawyer")
+  assignmentActions ProcessAssignment[] @relation("AssignmentActor")
+  userPermissions   UserPermission[]    @relation("UserPermissions")
+  grantedPermissions UserPermission[]   @relation("PermissionGrantedBy")
+  registrationInvites RegistrationInvite[] @relation("InviteCreatedBy")
+  emailVerificationTokens EmailVerificationToken[]
 
   @@map("users")
 }
@@ -88,6 +151,9 @@ model Process {
   lawyer     User?           @relation("LawyerProcesses", fields: [lawyerId], references: [id], onDelete: SetNull)
   documents  Document[]
   updates    ProcessUpdate[]
+  legalEvents LegalEvent[]
+  versions   ProcessVersion[]
+  assignments ProcessAssignment[]
 
   @@index([clientId])
   @@index([lawyerId])
@@ -134,4 +200,129 @@ model ChatMessage {
   @@index([senderId])
   @@index([recipientId])
   @@map("chat_messages")
+}
+
+model AuditLog {
+  id         String          @id @default(uuid())
+  actorId    String?
+  action     AuditAction
+  entityType AuditEntityType
+  entityId   String?
+  context    Json?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime        @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model LegalEvent {
+  id          String         @id @default(uuid())
+  processId    String
+  authorId     String?
+  type         LegalEventType
+  title        String
+  description  String?
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+
+  process Process @relation(fields: [processId], references: [id], onDelete: Cascade)
+  author  User?   @relation("LegalEventAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([processId, createdAt])
+  @@index([authorId])
+  @@index([type])
+  @@map("legal_events")
+}
+
+model ProcessVersion {
+  id            String   @id @default(uuid())
+  processId      String
+  versionNumber  Int
+  changedById    String?
+  changeType     String
+  previousData   Json?
+  newData        Json?
+  createdAt      DateTime @default(now())
+
+  process   Process @relation(fields: [processId], references: [id], onDelete: Cascade)
+  changedBy User?   @relation("ProcessVersionAuthor", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@unique([processId, versionNumber])
+  @@index([processId, createdAt])
+  @@index([changedById])
+  @@map("process_versions")
+}
+
+model ProcessAssignment {
+  id            String                @id @default(uuid())
+  processId      String
+  lawyerId       String
+  assignedById   String?
+  role           ProcessAssignmentRole @default(RESPONSIBLE)
+  assignedAt     DateTime              @default(now())
+  endedAt        DateTime?
+
+  process     Process @relation(fields: [processId], references: [id], onDelete: Cascade)
+  lawyer      User    @relation("AssignedLawyer", fields: [lawyerId], references: [id], onDelete: Cascade)
+  assignedBy  User?   @relation("AssignmentActor", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([processId, assignedAt])
+  @@index([lawyerId, endedAt])
+  @@map("process_assignments")
+}
+
+model UserPermission {
+  id          String         @id @default(uuid())
+  userId       String
+  permission   PermissionCode
+  grantedById  String?
+  createdAt    DateTime       @default(now())
+
+  user      User  @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("PermissionGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, permission])
+  @@index([userId])
+  @@index([permission])
+  @@map("user_permissions")
+}
+
+model RegistrationInvite {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  role        Role
+  invitedById String?
+  token       String   @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  invitedBy User? @relation("InviteCreatedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([token])
+  @@index([email, role])
+  @@map("registration_invites")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("email_verification_tokens")
 }

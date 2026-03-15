@@ -1,6 +1,7 @@
 const userRepository = require('../repositories/userRepository.jsx');
 const clientRepository = require('../repositories/clientRepository.jsx');
 const bcrypt = require('bcryptjs');
+const AppError = require('../utils/appError.jsx');
 const {
   isPlainObject,
   normalizeDate,
@@ -8,6 +9,7 @@ const {
   normalizeRequiredString,
 } = require('../utils/validation.jsx');
 const { sanitizeUser, sanitizeUserCollection } = require('../utils/userSerializers.jsx');
+const { Roles, STAFF_GRANTABLE_PERMISSIONS } = require('../modules/access-control/permissions.jsx');
 
 function buildUserProfileUpdate(data) {
   if (!isPlainObject(data)) {
@@ -144,7 +146,7 @@ class UserService {
   }
 
   async listUsers({ role, page, limit }) {
-    const allowedRoles = ['ADMIN', 'LAWYER', 'CLIENT'];
+    const allowedRoles = ['ADMIN', 'LAWYER', 'STAFF', 'CLIENT'];
     if (role !== undefined && !allowedRoles.includes(role)) {
       throw new Error('Perfil inválido');
     }
@@ -156,12 +158,56 @@ class UserService {
     };
   }
 
-  async toggleUserActive(userId) {
+  async listUsersForActor(actor, { role, page, limit }) {
+    const allowedRoles = ['ADMIN', 'LAWYER', 'STAFF', 'CLIENT'];
+    if (role !== undefined && !allowedRoles.includes(role)) {
+      throw new Error('Perfil inválido');
+    }
+
+    const result = await userRepository.findVisibleUsers({ actor, role, page, limit });
+    return {
+      ...result,
+      users: sanitizeUserCollection(result.users),
+    };
+  }
+
+  async toggleUserActive(actor, userId) {
+    if (actor.id === userId) {
+      throw new AppError('Você não pode inativar a própria conta', 400);
+    }
+
     const user = await userRepository.findById(userId);
     if (!user) throw new Error('Usuário não encontrado');
 
+    if (user.role === Roles.ADMIN) {
+      throw new AppError('Contas ADMIN não podem ser ativadas ou inativadas por esta rota', 400);
+    }
+
     const updated = await userRepository.update(userId, { active: !user.active });
     return sanitizeUser(updated);
+  }
+
+  async setStaffPermissions(targetUserId, permissions, actor) {
+    if (actor.role !== Roles.ADMIN) {
+      throw new AppError('Acesso negado', 403);
+    }
+
+    const targetUser = await userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw new AppError('Usuário não encontrado', 404);
+    }
+
+    if (targetUser.role !== Roles.STAFF) {
+      throw new AppError('Permissões granulares são exclusivas para usuários STAFF', 400);
+    }
+
+    const invalidPermissions = permissions.filter((permission) => !STAFF_GRANTABLE_PERMISSIONS.includes(permission));
+    if (invalidPermissions.length > 0) {
+      throw new AppError('Permissões inválidas para STAFF', 400, { invalidPermissions });
+    }
+
+    const updatedUser = await userRepository.replaceStaffPermissions(targetUserId, permissions, actor.id);
+    return sanitizeUser(updatedUser);
   }
 }
 

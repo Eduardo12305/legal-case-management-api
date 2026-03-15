@@ -22,12 +22,17 @@ class UserController {
   }
 
   async listUsers(req, res) {
-    const result = await userService.listUsers(req.query);
+    const result = await userService.listUsersForActor(req.user, req.query);
     return res.json(result);
   }
 
   async toggleUserActive(req, res) {
-    const user = await userService.toggleUserActive(req.params.id);
+    const user = await userService.toggleUserActive(req.user, req.params.id);
+    return res.json(user);
+  }
+
+  async setStaffPermissions(req, res) {
+    const user = await userService.setStaffPermissions(req.params.id, req.body.permissions, req.user);
     return res.json(user);
   }
 }
