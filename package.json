@@ -11,8 +11,6 @@
     "prisma:migrate:deploy": "npx prisma migrate deploy",
     "prisma:push": "npx prisma db push",
     "seed": "node scripts/seed.cjs",
-    "docker:up": "docker compose up --build",
-    "docker:down": "docker compose down",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db:generate": "node scripts/prisma-test.cjs generate",
