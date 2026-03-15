@@ -1,21 +1,13 @@
-function buildAllowedOrigins(value) {
-  if (!value) {
-    return ['http://localhost:5173'];
-  }
-
-  return value
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}
-
 function corsMiddleware({ allowedOrigins }) {
   return (req, res, next) => {
     const requestOrigin = req.headers.origin;
+    const isAllowedOrigin = !requestOrigin || allowedOrigins.includes(requestOrigin);
 
-    if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
-      res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-      res.setHeader('Vary', 'Origin');
+    if (isAllowedOrigin) {
+      if (requestOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+        res.setHeader('Vary', 'Origin');
+      }
     }
 
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
@@ -30,6 +22,5 @@ function corsMiddleware({ allowedOrigins }) {
 }
 
 module.exports = {
-  buildAllowedOrigins,
   corsMiddleware,
 };

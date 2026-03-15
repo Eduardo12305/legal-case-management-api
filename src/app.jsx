@@ -6,13 +6,13 @@ const clientRoutes = require('./routes/clientRoutes.jsx');
 const chatRoutes = require('./routes/chatRoutes.jsx');
 const userRoutes = require('./routes/userRoutes.jsx');
 const processRoutes = require('./routes/processRoutes.jsx');
-const { buildAllowedOrigins, corsMiddleware } = require('./middlewares/cors.jsx');
+const { corsMiddleware } = require('./middlewares/cors.jsx');
 const errorHandler = require('./middlewares/errorHandler.jsx');
 
 const app = express();
 
 app.use(corsMiddleware({
-  allowedOrigins: buildAllowedOrigins(env.corsAllowedOrigins),
+  allowedOrigins: env.corsAllowedOrigins,
 }));
 app.use(express.json());
 

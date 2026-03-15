@@ -1,8 +1,15 @@
 const AppError = require('../utils/appError.jsx');
 
+function parseAllowedOrigins(value) {
+  return (value || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 function loadEnv() {
   const port = Number(process.env.PORT || 3000);
-  const corsAllowedOrigins = process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173';
+  const corsAllowedOrigins = parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173');
   const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
   const emailVerificationRequired = process.env.EMAIL_VERIFICATION_REQUIRED === 'true';
 
