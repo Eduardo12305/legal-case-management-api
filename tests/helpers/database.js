@@ -1,6 +1,18 @@
 const db = require('../../src/database/mysql.jsx');
+const { initDatabase } = require('../../scripts/db-init.cjs');
 
 async function resetDatabase() {
+  await db.execute('SET FOREIGN_KEY_CHECKS = 0');
+  for (const table of [
+    'chat_messages',
+    'chat_conversations',
+  ]) {
+    await db.execute(`DROP TABLE IF EXISTS ${table}`);
+  }
+  await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+
+  await initDatabase({ closeConnection: false });
+
   await db.execute('SET FOREIGN_KEY_CHECKS = 0');
   for (const table of [
     'email_verification_tokens',
@@ -11,6 +23,7 @@ async function resetDatabase() {
     'legal_events',
     'audit_logs',
     'chat_messages',
+    'chat_conversations',
     'documents',
     'process_updates',
     'processes',

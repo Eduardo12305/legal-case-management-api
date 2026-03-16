@@ -73,14 +73,25 @@ async function initDatabase({ closeConnection = true } = {}) {
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_process_updates_process FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE CASCADE
     )`,
+    `CREATE TABLE IF NOT EXISTS chat_conversations (
+      id VARCHAR(36) PRIMARY KEY,
+      channel_key VARCHAR(191) NOT NULL UNIQUE,
+      type ENUM('GENERAL','LAWYER') NOT NULL,
+      client_user_id VARCHAR(36) NOT NULL,
+      lawyer_id VARCHAR(36) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_chat_conversations_client FOREIGN KEY (client_user_id) REFERENCES users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_chat_conversations_lawyer FOREIGN KEY (lawyer_id) REFERENCES users(id) ON DELETE SET NULL
+    )`,
     `CREATE TABLE IF NOT EXISTS chat_messages (
       id VARCHAR(36) PRIMARY KEY,
+      conversation_id VARCHAR(36) NOT NULL,
       sender_id VARCHAR(36) NOT NULL,
-      recipient_id VARCHAR(36) NOT NULL,
       content TEXT NOT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_chat_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-      CONSTRAINT fk_chat_recipient FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
+      CONSTRAINT fk_chat_messages_conversation FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+      CONSTRAINT fk_chat_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
     )`,
     `CREATE TABLE IF NOT EXISTS audit_logs (
       id VARCHAR(36) PRIMARY KEY,

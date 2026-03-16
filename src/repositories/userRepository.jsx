@@ -342,6 +342,24 @@ class UserRepository {
     return total;
   }
 
+  async findActiveUserIdsByRoles(roles = []) {
+    if (!Array.isArray(roles) || roles.length === 0) {
+      return [];
+    }
+
+    const placeholders = roles.map(() => '?').join(', ');
+    const rows = await db.query(
+      `SELECT id
+       FROM users
+       WHERE active = TRUE
+         AND email_verified = TRUE
+         AND role IN (${placeholders})`,
+      roles,
+    );
+
+    return rows.map((row) => row.id);
+  }
+
   async delete(id) {
     await db.execute('DELETE FROM users WHERE id = ?', [id]);
     return { id };

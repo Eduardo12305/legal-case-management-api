@@ -3,10 +3,10 @@ class ChatRealtimeService {
     this.connections = new Map();
   }
 
-  subscribe(userId, res, recipientId) {
+  subscribe(userId, res, conversationId) {
     const connection = {
       res,
-      recipientId: recipientId || null,
+      conversationId: conversationId || null,
       heartbeat: null,
     };
 
@@ -23,7 +23,7 @@ class ChatRealtimeService {
 
     this.sendEvent(res, 'connected', {
       userId,
-      recipientId: recipientId || null,
+      conversationId: conversationId || null,
       connectedAt: new Date().toISOString(),
     });
 
@@ -54,10 +54,10 @@ class ChatRealtimeService {
     }
   }
 
-  publishMessage(message) {
-    this.publishToUser(message.senderId, 'chat.message', message);
-    if (message.recipientId !== message.senderId) {
-      this.publishToUser(message.recipientId, 'chat.message', message);
+  publishMessage(message, audienceUserIds = []) {
+    const recipients = [...new Set(audienceUserIds.filter(Boolean))];
+    for (const userId of recipients) {
+      this.publishToUser(userId, 'chat.message', message);
     }
   }
 
@@ -68,12 +68,8 @@ class ChatRealtimeService {
     }
 
     for (const connection of userConnections) {
-      if (connection.recipientId) {
-        const isConversationMessage =
-          payload.senderId === connection.recipientId || payload.recipientId === connection.recipientId;
-        if (!isConversationMessage) {
-          continue;
-        }
+      if (connection.conversationId && payload.conversationId !== connection.conversationId) {
+        continue;
       }
 
       this.sendEvent(connection.res, eventName, payload);

@@ -316,6 +316,39 @@ class ProcessRepository {
     );
     return toCamelProcessUpdate(row);
   }
+
+  async findLinkedLawyerIdsByClientUserId(clientUserId) {
+    const rows = await db.query(
+      `SELECT DISTINCT p.lawyer_id AS lawyerId
+       FROM processes p
+       INNER JOIN clients c ON c.id = p.client_id
+       INNER JOIN users u ON u.id = p.lawyer_id
+       WHERE c.user_id = ?
+         AND p.lawyer_id IS NOT NULL
+         AND u.active = TRUE
+         AND u.email_verified = TRUE
+       ORDER BY p.created_at DESC`,
+      [clientUserId],
+    );
+
+    return rows.map((row) => row.lawyerId);
+  }
+
+  async findLinkedClientUserIdsByLawyerId(lawyerId) {
+    const rows = await db.query(
+      `SELECT DISTINCT c.user_id AS userId
+       FROM processes p
+       INNER JOIN clients c ON c.id = p.client_id
+       INNER JOIN users u ON u.id = c.user_id
+       WHERE p.lawyer_id = ?
+         AND u.active = TRUE
+         AND u.email_verified = TRUE
+       ORDER BY p.created_at DESC`,
+      [lawyerId],
+    );
+
+    return rows.map((row) => row.userId);
+  }
 }
 
 module.exports = new ProcessRepository();
