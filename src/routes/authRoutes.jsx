@@ -15,7 +15,7 @@ const router = Router();
 
 router.post('/register', validateRequest({ body: registerBody }), asyncHandler((req, res) => authController.register(req, res)));
 router.post('/login', validateRequest({ body: loginBody }), asyncHandler((req, res) => authController.login(req, res)));
-router.post('/first-access/change-password', validateRequest({ body: firstAccessPasswordBody }), asyncHandler((req, res) => authController.completeFirstAccess(req, res)));
+router.post('/first-access/change-password', authMiddleware, validateRequest({ body: firstAccessPasswordBody }), asyncHandler((req, res) => authController.completeFirstAccess(req, res)));
 router.get('/invite-options', authMiddleware, authorizeRoles('ADMIN', 'LAWYER', 'STAFF'), asyncHandler((req, res) => authController.getInviteOptions(req, res)));
 router.post('/invites', authMiddleware, authorizeRoles('ADMIN', 'LAWYER', 'STAFF'), validateRequest({ body: inviteBody }), asyncHandler((req, res) => authController.createInvite(req, res)));
 router.get('/verify-email', validateRequest({ query: verifyEmailQuery }), asyncHandler((req, res) => authController.verifyEmail(req, res)));

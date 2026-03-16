@@ -62,11 +62,8 @@ function loginBody(body) {
 
 function firstAccessPasswordBody(body) {
   const data = requireObject(body, 'Body');
-  const identifier = data.identifier ?? data.email;
 
   return {
-    identifier: requireString(identifier, 'Login'),
-    currentPassword: requireString(data.currentPassword, 'Senha atual'),
     newPassword: requireString(data.newPassword, 'Nova senha'),
   };
 }

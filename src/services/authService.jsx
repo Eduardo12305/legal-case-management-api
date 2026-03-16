@@ -304,10 +304,11 @@ class AuthService {
     }
 
     if (user.isFirstLogin) {
-        return {
-            userId: user.id,
-            requiresPasswordChange: true,
-        };
+      return {
+        user: sanitizeUser(user),
+        token: this.generateToken(user),
+        requiresPasswordChange: true,
+      };
     }
 
     const token = this.generateToken(user);
@@ -391,31 +392,20 @@ class AuthService {
     return { message: 'Senha alterada com sucesso' };
   }
 
-  async completeFirstAccess({ identifier, currentPassword, newPassword }) {
-    const normalizedIdentifier = normalizeRequiredString(identifier, 'Login');
-    const normalizedCurrentPassword = normalizeRequiredString(currentPassword, 'Senha atual');
+  async completeFirstAccess(userId, { newPassword }) {
     const normalizedNewPassword = normalizeRequiredString(newPassword, 'Nova senha');
 
     if (normalizedNewPassword.length < 8) {
       throw new Error('A nova senha deve ter pelo menos 8 caracteres');
     }
 
-    if (normalizedCurrentPassword === normalizedNewPassword) {
-      throw new Error('A nova senha deve ser diferente da senha temporária');
-    }
-
-    const user = await this.findUserForLogin(normalizedIdentifier);
+    const user = await userRepository.findById(userId);
     if (!user) {
-      throw new Error('Credenciais inválidas');
+      throw new Error('Usuário não encontrado');
     }
 
     if (!user.active) {
       throw new Error('Conta desativada');
-    }
-
-    const validPassword = await bcrypt.compare(normalizedCurrentPassword, user.password);
-    if (!validPassword) {
-      throw new Error('Senha atual incorreta');
     }
 
     if (!user.isFirstLogin) {

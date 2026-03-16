@@ -12,7 +12,7 @@ class AuthController {
   }
 
   async completeFirstAccess(req, res) {
-    const result = await authService.completeFirstAccess(req.body);
+    const result = await authService.completeFirstAccess(req.user.id, req.body);
     return res.json(result);
   }
 
