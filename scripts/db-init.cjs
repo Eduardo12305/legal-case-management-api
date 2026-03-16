@@ -1,6 +1,174 @@
 require('dotenv').config();
 
 const db = require('../src/database/mysql.jsx');
+const { generateId } = require('../src/database/repositoryUtils.jsx');
+const { ChatConversationTypes, buildChatChannelKey } = require('../src/modules/chat/chatConstants.jsx');
+
+const GENERAL_CHAT_ROLES = ['STAFF', 'ADMIN'];
+
+async function listTableColumns(tableName) {
+  return db.query(
+    `SELECT COLUMN_NAME AS columnName, IS_NULLABLE AS isNullable
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?`,
+    [tableName],
+  );
+}
+
+async function listTableConstraints(tableName) {
+  return db.query(
+    `SELECT CONSTRAINT_NAME AS constraintName
+     FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?`,
+    [tableName],
+  );
+}
+
+function deriveLegacyConversation(message) {
+  if (message.senderRole === 'CLIENT' && message.recipientRole === 'LAWYER') {
+    return {
+      type: ChatConversationTypes.LAWYER,
+      clientUserId: message.senderId,
+      lawyerId: message.recipientId,
+    };
+  }
+
+  if (message.senderRole === 'LAWYER' && message.recipientRole === 'CLIENT') {
+    return {
+      type: ChatConversationTypes.LAWYER,
+      clientUserId: message.recipientId,
+      lawyerId: message.senderId,
+    };
+  }
+
+  if (message.senderRole === 'CLIENT' && GENERAL_CHAT_ROLES.includes(message.recipientRole)) {
+    return {
+      type: ChatConversationTypes.GENERAL,
+      clientUserId: message.senderId,
+      lawyerId: null,
+    };
+  }
+
+  if (GENERAL_CHAT_ROLES.includes(message.senderRole) && message.recipientRole === 'CLIENT') {
+    return {
+      type: ChatConversationTypes.GENERAL,
+      clientUserId: message.recipientId,
+      lawyerId: null,
+    };
+  }
+
+  return null;
+}
+
+async function ensureChatConversation(params, { createdAt, updatedAt } = {}) {
+  const channelKey = buildChatChannelKey(params);
+  const existing = await db.one(
+    `SELECT id
+     FROM chat_conversations
+     WHERE channel_key = ?
+     LIMIT 1`,
+    [channelKey],
+  );
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const id = generateId();
+  await db.execute(
+    `INSERT INTO chat_conversations (
+      id, channel_key, type, client_user_id, lawyer_id, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      channelKey,
+      params.type,
+      params.clientUserId,
+      params.lawyerId ?? null,
+      createdAt || new Date(),
+      updatedAt || createdAt || new Date(),
+    ],
+  );
+
+  return id;
+}
+
+async function migrateLegacyChatSchema() {
+  const chatMessageColumns = await listTableColumns('chat_messages');
+  if (chatMessageColumns.length === 0) {
+    return;
+  }
+
+  const hasConversationId = chatMessageColumns.some((column) => column.columnName === 'conversation_id');
+  const recipientColumn = chatMessageColumns.find((column) => column.columnName === 'recipient_id');
+
+  if (!hasConversationId) {
+    await db.execute('ALTER TABLE chat_messages ADD COLUMN conversation_id VARCHAR(36) NULL AFTER id');
+  }
+
+  if (recipientColumn && recipientColumn.isNullable !== 'YES') {
+    await db.execute('ALTER TABLE chat_messages MODIFY COLUMN recipient_id VARCHAR(36) NULL');
+  }
+
+  const chatMessageConstraints = await listTableConstraints('chat_messages');
+  const hasConversationConstraint = chatMessageConstraints.some(
+    (constraint) => constraint.constraintName === 'fk_chat_messages_conversation',
+  );
+
+  const legacyMessages = recipientColumn
+    ? await db.query(
+      `SELECT
+        m.id AS id,
+        m.sender_id AS senderId,
+        m.recipient_id AS recipientId,
+        m.created_at AS createdAt,
+        su.role AS senderRole,
+        ru.role AS recipientRole
+      FROM chat_messages m
+      INNER JOIN users su ON su.id = m.sender_id
+      LEFT JOIN users ru ON ru.id = m.recipient_id
+      WHERE m.recipient_id IS NOT NULL
+        AND m.conversation_id IS NULL
+      ORDER BY m.created_at ASC, m.id ASC`,
+      )
+    : [];
+
+  let skippedLegacyMessages = 0;
+
+  for (const message of legacyMessages) {
+    const conversationParams = deriveLegacyConversation(message);
+    if (!conversationParams) {
+      skippedLegacyMessages += 1;
+      continue;
+    }
+
+    const conversationId = await ensureChatConversation(conversationParams, {
+      createdAt: message.createdAt,
+      updatedAt: message.createdAt,
+    });
+
+    await db.execute(
+      'UPDATE chat_messages SET conversation_id = ? WHERE id = ?',
+      [conversationId, message.id],
+    );
+  }
+
+  if (!hasConversationConstraint) {
+    await db.execute(
+      `ALTER TABLE chat_messages
+       ADD CONSTRAINT fk_chat_messages_conversation
+       FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE`,
+    );
+  }
+
+  if (skippedLegacyMessages > 0) {
+    console.warn(
+      `Migração do chat ignorou ${skippedLegacyMessages} mensagens legadas sem par cliente/atendimento ou cliente/advogado.`,
+    );
+  }
+}
 
 async function initDatabase({ closeConnection = true } = {}) {
   const statements = [
@@ -178,6 +346,8 @@ async function initDatabase({ closeConnection = true } = {}) {
   for (const statement of statements) {
     await db.execute(statement);
   }
+
+  await migrateLegacyChatSchema();
 
   console.log('Banco inicializado com sucesso.');
 
